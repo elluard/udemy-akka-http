@@ -3,6 +3,7 @@ package part2_lowlevelserver
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.IncomingConnection
+import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest, HttpResponse, StatusCodes, Uri}
 import akka.stream.scaladsl.{Flow, Sink}
 
@@ -156,4 +157,68 @@ object LowLevelAPI extends App {
 
   // shorthand version
   Http().newServerAt("localhost", 8082).bindFlow(streamsBasedRequestHandler)
+
+  /**
+   * Exercise : create your own HTTP Server running on localhost on 8388, which replies
+   *  - with a welcome message on the "front door" localhost:8388
+   *  - with a proper HTML on localhost:8388/about
+   *  - with a 404 message otherwise
+   */
+
+  val exerciseHandler : Flow[HttpRequest, HttpResponse, _] = Flow[HttpRequest].map {
+    case HttpRequest(HttpMethods.GET, Uri.Path("/"), value, entity, protocol) =>
+      HttpResponse(
+        StatusCodes.OK,
+        entity = HttpEntity(
+          ContentTypes.`text/html(UTF-8)`,
+          """
+            |<html>
+            | <body>
+            |   Welcome!
+            | </body>
+            |</html>
+            |""".stripMargin
+        )
+      )
+    case HttpRequest(HttpMethods.GET, Uri.Path("/about"), value, entity, protocol) =>
+      HttpResponse(
+        StatusCodes.OK,
+        entity = HttpEntity(
+          ContentTypes.`text/html(UTF-8)`,
+          """
+            |<html>
+            | <body>
+            |   here is about
+            | </body>
+            |</html>
+            |""".stripMargin
+        )
+      )
+    case HttpRequest(HttpMethods.GET, Uri.Path("/search"), _, _, _) =>
+      HttpResponse(
+        StatusCodes.Found,
+        headers = List(Location("http://google.com"))
+      )
+    case request: HttpRequest =>
+      request.discardEntityBytes()
+      HttpResponse(
+        StatusCodes.NotFound,
+        entity = HttpEntity(
+          ContentTypes.`text/html(UTF-8)`,
+          """
+            |<html>
+            | <body>
+            |   OOPPS! The resource can't be found.
+            | </body>
+            |</html>
+            |""".stripMargin
+        )
+      )
+  }
+  val bindingFuture = Http().newServerAt("localhost", 8388).bindFlow(exerciseHandler)
+
+  // shutdown the server
+  bindingFuture
+    .flatMap(binding => binding.unbind())
+    .onComplete(_ => system.terminate())
 }
