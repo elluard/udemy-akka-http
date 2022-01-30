@@ -3,7 +3,7 @@ package part4_client
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethods, HttpRequest, HttpResponse, StatusCodes, Uri}
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import part4_client.PaymentSystemDomain.PaymentRequest
 import spray.json._
 
